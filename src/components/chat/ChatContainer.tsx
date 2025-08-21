@@ -32,24 +32,33 @@ export const ChatContainer = () => {
   const generateUniqueId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   const sendToRasa = async (userMessage: string): Promise<string[]> => {
+    console.log('🚀 Attempting to send message to Rasa:', userMessage);
+    
     try {
       // Try edge function first, fallback to mock if it fails
       const { chatAPI } = await import('@/lib/chat-api');
+      console.log('📡 Using edge function endpoint:', chatAPI);
       
       try {
+        console.log('⏳ Calling edge function...');
         const response = await chatAPI.sendMessage("user-123", userMessage);
+        console.log('✅ Edge function response:', response);
+        
         if (response && response.length > 0) {
           return response;
         }
+        console.warn('⚠️ Edge function returned empty response, falling back to mock API');
       } catch (edgeError) {
-        console.warn('Edge function failed, using mock API:', edgeError);
+        console.error('❌ Edge function failed:', edgeError);
+        console.warn('🔄 Falling back to mock API');
       }
       
       // Fallback to mock API for development
+      console.log('🎭 Using mock API for response');
       const { simulateRasaCall } = await import('@/lib/mock-rasa-api');
       return await simulateRasaCall(userMessage);
     } catch (error) {
-      console.error('Error sending message to Rasa:', error);
+      console.error('💥 Critical error in sendToRasa:', error);
       return ["I'm sorry, I'm having trouble processing your request right now. Please try again in a moment."];
     }
   };
