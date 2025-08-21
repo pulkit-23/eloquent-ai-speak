@@ -2,7 +2,25 @@
 
 This chatbot UI is ready to integrate with Rasa. Here's how to connect it to your Rasa server:
 
-## 🚀 Production Integration
+## 🚀 Edge Function Integration
+
+### Edge Function Location
+The edge function is created at `netlify/functions/chat.js` and handles:
+- POST requests to `/.netlify/functions/chat`
+- Request forwarding to your Rasa server
+- Error handling and response formatting
+- Environment variable support for endpoint configuration
+
+### Current Setup
+- **Default**: Uses Lovable edge function at `/.netlify/functions/chat`
+- **Fallback**: Mock API for development/testing
+- **Configurable**: Easy endpoint switching for production
+
+### Environment Variables
+Set `RASA_ENDPOINT` environment variable to override the default localhost endpoint:
+```
+RASA_ENDPOINT=https://your-rasa-server.com/webhooks/rest/webhook
+```
 
 ### 1. Replace Mock API with Real Rasa Connection
 

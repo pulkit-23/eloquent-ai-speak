@@ -33,31 +33,21 @@ export const ChatContainer = () => {
 
   const sendToRasa = async (userMessage: string): Promise<string[]> => {
     try {
-      // For demo purposes, we'll use the mock API
-      // In production, replace this with actual Rasa endpoint
+      // Try edge function first, fallback to mock if it fails
+      const { chatAPI } = await import('@/lib/chat-api');
+      
+      try {
+        const response = await chatAPI.sendMessage("user-123", userMessage);
+        if (response && response.length > 0) {
+          return response;
+        }
+      } catch (edgeError) {
+        console.warn('Edge function failed, using mock API:', edgeError);
+      }
+      
+      // Fallback to mock API for development
       const { simulateRasaCall } = await import('@/lib/mock-rasa-api');
       return await simulateRasaCall(userMessage);
-      
-      // Uncomment below for actual Rasa integration:
-      /*
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sender: "user-123", // In real app, this would be a unique user ID
-          message: userMessage
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get response from chat service');
-      }
-
-      const botMessages = await response.json();
-      return botMessages.map((msg: any) => msg.text || "Sorry, I couldn't process that.");
-      */
     } catch (error) {
       console.error('Error sending message to Rasa:', error);
       return ["I'm sorry, I'm having trouble processing your request right now. Please try again in a moment."];

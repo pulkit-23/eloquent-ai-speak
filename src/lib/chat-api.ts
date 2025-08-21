@@ -13,18 +13,25 @@ export interface RasaResponse {
 
 export class ChatAPI {
   private rasaEndpoint: string;
+  private useEdgeFunction: boolean = true;
 
-  constructor(endpoint: string = 'http://localhost:5005/webhooks/rest/webhook') {
+  constructor(endpoint: string = '/.netlify/functions/chat') {
     this.rasaEndpoint = endpoint;
   }
 
   // Set a new endpoint (useful for switching between local and deployed)
   setEndpoint(endpoint: string) {
     this.rasaEndpoint = endpoint;
+    this.useEdgeFunction = false; // Disable edge function when custom endpoint is set
+  }
+
+  // Toggle between edge function and direct Rasa calls
+  setUseEdgeFunction(use: boolean) {
+    this.useEdgeFunction = use;
   }
 
   // Send message to Rasa and get response
-  async sendMessage(sender: string, message: string): Promise<RasaResponse[]> {
+  async sendMessage(sender: string, message: string): Promise<string[]> {
     const payload: RasaMessage = {
       sender,
       message
@@ -43,8 +50,15 @@ export class ChatAPI {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: RasaResponse[] = await response.json();
-      return data;
+      const data = await response.json();
+      
+      if (this.useEdgeFunction) {
+        // Edge function returns { messages: string[] }
+        return data.messages || [];
+      } else {
+        // Direct Rasa call returns RasaResponse[]
+        return data.map((item: RasaResponse) => item.text).filter(Boolean);
+      }
     } catch (error) {
       console.error('Error communicating with Rasa:', error);
       throw error;
