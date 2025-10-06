@@ -1,44 +1,35 @@
 // Chat API utilities for Rasa integration
 // This file provides the interface for connecting to Rasa
 
-export interface RasaMessage {
-  sender: string;
+// Generic chat API for connecting to any Python backend
+export interface ChatMessage {
   message: string;
 }
 
-export interface RasaResponse {
+export interface ChatResponse {
+  response?: string;
   text?: string;
-  custom?: any;
+  message?: string;
 }
 
 export class ChatAPI {
-  private rasaEndpoint: string;
-  private useEdgeFunction: boolean = true;
+  private endpoint: string;
 
-  constructor(endpoint: string = '/.netlify/functions/chat') {
-    this.rasaEndpoint = endpoint;
+  constructor(endpoint: string = '/api/chat') {
+    this.endpoint = endpoint;
   }
 
-  // Set a new endpoint (useful for switching between local and deployed)
+  // Set your Python backend endpoint
   setEndpoint(endpoint: string) {
-    this.rasaEndpoint = endpoint;
-    this.useEdgeFunction = false; // Disable edge function when custom endpoint is set
+    this.endpoint = endpoint;
   }
 
-  // Toggle between edge function and direct Rasa calls
-  setUseEdgeFunction(use: boolean) {
-    this.useEdgeFunction = use;
-  }
-
-  // Send message to Rasa and get response
-  async sendMessage(sender: string, message: string): Promise<string[]> {
-    const payload: RasaMessage = {
-      sender,
-      message
-    };
+  // Send message to your Python backend
+  async sendMessage(message: string): Promise<string> {
+    const payload: ChatMessage = { message };
 
     try {
-      const response = await fetch(this.rasaEndpoint, {
+      const response = await fetch(this.endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,31 +41,16 @@ export class ChatAPI {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: ChatResponse = await response.json();
       
-      if (this.useEdgeFunction) {
-        // Edge function returns { messages: string[] }
-        return data.messages || [];
-      } else {
-        // Direct Rasa call returns RasaResponse[]
-        return data.map((item: RasaResponse) => item.text).filter(Boolean);
-      }
+      // Handle different response formats from Python backends
+      return data.response || data.text || data.message || 'No response';
     } catch (error) {
-      console.error('Error communicating with Rasa:', error);
+      console.error('Error communicating with backend:', error);
       throw error;
-    }
-  }
-
-  // Test connection to Rasa server
-  async testConnection(): Promise<boolean> {
-    try {
-      await this.sendMessage('test-user', 'hello');
-      return true;
-    } catch (error) {
-      return false;
     }
   }
 }
 
-// Singleton instance for the app
-export const chatAPI = new ChatAPI();
+// Configure this with your Python backend URL
+export const chatAPI = new ChatAPI('http://localhost:7860/api/chat'); // Update with your backend URL

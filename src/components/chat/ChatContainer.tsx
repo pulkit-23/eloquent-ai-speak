@@ -31,35 +31,18 @@ export const ChatContainer = () => {
 
   const generateUniqueId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  const sendToRasa = async (userMessage: string): Promise<string[]> => {
-    console.log('🚀 Attempting to send message to Rasa:', userMessage);
+  const sendToBackend = async (userMessage: string): Promise<string> => {
+    console.log('🚀 Sending message to backend:', userMessage);
     
     try {
-      // Try edge function first, fallback to mock if it fails
       const { chatAPI } = await import('@/lib/chat-api');
-      console.log('📡 Using edge function endpoint:', chatAPI);
-      
-      try {
-        console.log('⏳ Calling edge function...');
-        const response = await chatAPI.sendMessage("user-123", userMessage);
-        console.log('✅ Edge function response:', response);
-        
-        if (response && response.length > 0) {
-          return response;
-        }
-        console.warn('⚠️ Edge function returned empty response, falling back to mock API');
-      } catch (edgeError) {
-        console.error('❌ Edge function failed:', edgeError);
-        console.warn('🔄 Falling back to mock API');
-      }
-      
-      // Fallback to mock API for development
-      console.log('🎭 Using mock API for response');
-      const { simulateRasaCall } = await import('@/lib/mock-rasa-api');
-      return await simulateRasaCall(userMessage);
+      console.log('📡 Calling backend API...');
+      const response = await chatAPI.sendMessage(userMessage);
+      console.log('✅ Backend response:', response);
+      return response;
     } catch (error) {
-      console.error('💥 Critical error in sendToRasa:', error);
-      return ["I'm sorry, I'm having trouble processing your request right now. Please try again in a moment."];
+      console.error('❌ Backend error:', error);
+      throw error;
     }
   };
 
@@ -75,20 +58,15 @@ export const ChatContainer = () => {
     setIsLoading(true);
 
     try {
-      const botResponses = await sendToRasa(messageText);
+      const responseText = await sendToBackend(messageText);
       
-      // Add each bot response as a separate message
-      botResponses.forEach((responseText, index) => {
-        setTimeout(() => {
-          const botMessage: Message = {
-            id: generateUniqueId(),
-            text: responseText,
-            sender: "bot",
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, botMessage]);
-        }, index * 500); // Stagger responses for better UX
-      });
+      const botMessage: Message = {
+        id: generateUniqueId(),
+        text: responseText,
+        sender: "bot",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       toast({
         title: "Connection Error",
